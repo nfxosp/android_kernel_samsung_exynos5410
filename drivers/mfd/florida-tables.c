@@ -1792,6 +1792,12 @@ static bool florida_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_MIC_BIAS_CTRL_1:
 	case ARIZONA_MIC_BIAS_CTRL_2:
 	case ARIZONA_MIC_BIAS_CTRL_3:
+	case ARIZONA_HP_CTRL_1L:
+	case ARIZONA_HP_CTRL_1R:
+	case ARIZONA_HP_CTRL_2L:
+	case ARIZONA_HP_CTRL_2R:
+	case ARIZONA_HP_CTRL_3L:
+	case ARIZONA_HP_CTRL_3R:
 	case ARIZONA_ACCESSORY_DETECT_MODE_1:
 	case ARIZONA_HEADPHONE_DETECT_1:
 	case ARIZONA_HEADPHONE_DETECT_2:
@@ -1837,6 +1843,7 @@ static bool florida_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_DMIC4R_CONTROL:
 	case ARIZONA_OUTPUT_ENABLES_1:
 	case ARIZONA_OUTPUT_STATUS_1:
+	case ARIZONA_OUTPUT_STANDBY_1:
 	case ARIZONA_RAW_OUTPUT_STATUS_1:
 	case ARIZONA_OUTPUT_RATE_1:
 	case ARIZONA_OUTPUT_VOLUME_RAMP:
