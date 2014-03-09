@@ -258,6 +258,7 @@ asmlinkage void __cpuinit secondary_start_kernel(void)
 	printk("CPU%u: Booted secondary processor\n", cpu);
 
 	cpu_init();
+
 	preempt_disable();
 	trace_hardirqs_off();
 
@@ -311,6 +312,7 @@ void __init smp_cpus_done(unsigned int max_cpus)
 
 void __init smp_prepare_boot_cpu(void)
 {
+	set_my_cpu_offset(per_cpu_offset(smp_processor_id()));
 }
 
 void __init smp_prepare_cpus(unsigned int max_cpus)
