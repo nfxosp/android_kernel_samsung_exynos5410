@@ -94,6 +94,7 @@ static uint32_t minimum_interval_time = MIN_CSWAP_INTERVAL;
 #ifdef LMK_COUNT_READ
 static uint32_t lmk_count = 0;
 #endif
+#include <trace/events/memkill.h>
 
 #ifdef CONFIG_ANDROID_OOM_KILLER
 #define MULTIPLE_OOM_KILLER
@@ -415,6 +416,9 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 			     selected->pid, selected->comm,
 			     selected_oom_score_adj, selected_tasksize);
 		lowmem_deathpending_timeout = jiffies + HZ;
+		trace_lmk_kill(selected->pid, selected->comm,
+				selected_oom_score_adj, selected_tasksize,
+				min_score_adj);
 		send_sig(SIGKILL, selected, 0);
 		set_tsk_thread_flag(selected, TIF_MEMDIE);
 		rem -= selected_tasksize;
