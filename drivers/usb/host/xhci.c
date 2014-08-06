@@ -471,6 +471,7 @@ static bool compliance_mode_recovery_timer_quirk_check(void)
 
 	dmi_product_name = dmi_get_system_info(DMI_PRODUCT_NAME);
 	dmi_sys_vendor = dmi_get_system_info(DMI_SYS_VENDOR);
+
 	if (!dmi_product_name || !dmi_sys_vendor)
 		return false;
 
@@ -479,8 +480,7 @@ static bool compliance_mode_recovery_timer_quirk_check(void)
 
 	if (strstr(dmi_product_name, "Z420") ||
 			strstr(dmi_product_name, "Z620") ||
-			strstr(dmi_product_name, "Z820") ||
-			strstr(dmi_product_name, "Z1 Workstation"))
+			strstr(dmi_product_name, "Z820"))
 		return true;
 
 	return false;
