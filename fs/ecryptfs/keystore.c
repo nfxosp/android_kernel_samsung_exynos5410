@@ -1206,8 +1206,7 @@ out:
 		kfree(msg);
 	if (auth_tok_sig)
         kfree(auth_tok_sig);
-	if (payload)
-        kfree(payload);
+	kfree(payload);
 	return rc;
 }
 
