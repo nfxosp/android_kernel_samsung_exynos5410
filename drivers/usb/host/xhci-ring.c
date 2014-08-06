@@ -1219,7 +1219,7 @@ static void xhci_cmd_to_noop(struct xhci_hcd *xhci, struct xhci_cd *cur_cd)
 {
 	struct xhci_segment *cur_seg;
 	union xhci_trb *cmd_trb;
-	u32 cycle_state=0;
+	u32 cycle_state;
 
 	if (xhci->cmd_ring->dequeue == xhci->cmd_ring->enqueue)
 		return;
