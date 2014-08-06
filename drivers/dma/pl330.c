@@ -1641,15 +1641,16 @@ static int pl330_submit_req(void *ch_id, struct pl330_req *r)
 		goto xfer_exit;
 	}
 
+	/* Use last settings, if not provided */
 	if (r->cfg) {
 		/* Prefer Secure Channel */
 		if (!_manager_ns(thrd))
 			r->cfg->nonsecure = 0;
 		else
 			r->cfg->nonsecure = 1;
+
 		ccr = _prepare_ccr(r->cfg);
 	} else {
-		/* Use last settings, if not provided */
 		ccr = readl(regs + CC(thrd->id));
 	}
 
