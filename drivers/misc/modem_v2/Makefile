@@ -1,6 +1,6 @@
 # Makefile of modem_if
 
-EXTRA_CFLAGS += -Idrivers/misc/modem_v2
+EXTRA_CFLAGS += -Idrivers/misc/modem_v2 -Wno-error=comment
 
 obj-y += sipc5_modem.o sipc5_io_device.o
 obj-y += sipc4_modem.o sipc4_io_device.o
