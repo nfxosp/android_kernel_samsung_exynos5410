@@ -161,7 +161,7 @@ static void haptic_work(struct work_struct *work)
 		max77803_haptic_i2c(hap_data, true);
 
 		pwm_config(hap_data->pwm, pwm_duty, hap_data->pdata->period);
-		pr_debug("[VIB] %s: pwm_config duty=%d\n", __func__, pwm_duty);
+        pr_info("[VIB] %s: pwm_config duty=%d\n", __func__, pwm_duty);
 		pwm_enable(hap_data->pwm);
 
 		if (hap_data->pdata->motor_en)
@@ -192,7 +192,7 @@ static void haptic_work(struct work_struct *work)
 void vibtonz_en(bool en)
 {
 	if (g_hap_data == NULL) {
-		printk(KERN_ERR "[VIB] the motor is not ready!!!");
+		pr_err("[VIB] %s: the motor is not ready!!!", __func__);
 		return ;
 	}
 
@@ -250,7 +250,7 @@ void vibtonz_pwm(int nForce)
 	if (prev_duty != pwm_duty) {
 		prev_duty = pwm_duty;
 
-		pr_debug("[VIB] %s: setting pwm_duty=%d", __func__, pwm_duty);
+        pr_debug("[VIB] %s: setting pwm_duty=%d", __func__, pwm_duty);
 		pwm_config(g_hap_data->pwm, pwm_duty, pwm_period);
 	}
 }
@@ -262,7 +262,7 @@ static ssize_t pwm_val_show(struct device *dev,
 {
 	int count;
 
-	pwm_val = ((pwm_duty - 18525) * 100) / 18525;
+    pwm_val = ((pwm_duty - 18525) * 100) / 18525;
 
 	count = sprintf(buf, "%lu\n", pwm_val);
 	pr_debug("[VIB] pwm_val: %lu\n", pwm_val);
@@ -277,19 +277,19 @@ ssize_t pwm_val_store(struct device *dev,
 	if (kstrtoul(buf, 0, &pwm_val))
 		pr_err("[VIB] %s: error on storing pwm_val\n", __func__); 
 
-	pr_info("[VIB] %s: pwm_val=%lu\n", __func__, pwm_val);
+    pr_info("[VIB] %s: pwm_val=%lu\n", __func__, pwm_val);
 
-	pwm_duty = (pwm_val * 18525) / 100 + 18525;
+    pwm_duty = (pwm_val * 18525) / 100 + 18525;
 
-	/* make sure new pwm duty is in range */
-	if(pwm_duty > 37050) 
-	{   
-		pwm_duty = 37050;
-	} 
-	else if (pwm_duty < 18525) 
-	{
-		pwm_duty = 18525;
-	}
+    /* make sure new pwm duty is in range */
+    if(pwm_duty > 37050) 
+    {   
+        pwm_duty = 37050;
+    } 
+    else if (pwm_duty < 18525) 
+    {
+        pwm_duty = 18525;
+    }
 
 	pr_info("[VIB] %s: pwm_duty=%d\n", __func__, pwm_duty);
 
@@ -380,7 +380,7 @@ static int max77803_haptic_probe(struct platform_device *pdev)
 	
 	hap_data->resumed = false;
 
-	create_vibrator_sysfs();
+    create_vibrator_sysfs();
 
 #ifdef CONFIG_ANDROID_TIMED_OUTPUT
 	error = timed_output_dev_register(&hap_data->tout_dev);
