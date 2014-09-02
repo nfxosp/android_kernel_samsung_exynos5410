@@ -74,7 +74,6 @@ static ssize_t sdcardfs_direct_IO(int rw, struct kiocb *iocb,
  */
 const struct address_space_operations sdcardfs_aops = {
 	/* empty on purpose */
-	.direct_IO	= sdcardfs_direct_IO,
 };
 
 const struct vm_operations_struct sdcardfs_vm_ops = {
