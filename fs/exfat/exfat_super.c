@@ -1533,8 +1533,7 @@ static ssize_t exfat_direct_IO(int rw, struct kiocb *iocb,
 #ifdef CONFIG_AIO_OPTIMIZATION
 					struct iov_iter *iter, loff_t offset)
 #else
-					   const struct iovec *iov,
-					   loff_t offset, unsigned long nr_segs)
+					   const struct iovec *iov, loff_t offset, unsigned long nr_segs)
 #endif
 {
 	struct inode *inode = iocb->ki_filp->f_mapping->host;
