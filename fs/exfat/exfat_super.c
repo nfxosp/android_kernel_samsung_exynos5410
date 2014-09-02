@@ -1561,7 +1561,6 @@ static ssize_t exfat_direct_IO(int rw, struct kiocb *iocb,
         ret = blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iov,
 					offset, nr_segs, exfat_get_block, NULL);
 #endif
-#endif
 
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,34)
 	if ((ret < 0) && (rw & WRITE))
