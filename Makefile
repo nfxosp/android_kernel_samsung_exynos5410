@@ -369,6 +369,8 @@ KBUILD_CFLAGS   := -Wall -Werror -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security -Wno-unused \
 		   -fno-delete-null-pointer-checks \
+		   -Wno-error=maybe-uninitialized \
+		   -Wno-error=array-bounds \
 		   -fno-schedule-insns2
 
 KBUILD_AFLAGS_KERNEL :=
