@@ -368,11 +368,10 @@ KBUILD_CFLAGS   := -Wall -Werror -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -fno-strict-aliasing -fno-common \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security -Wno-unused \
-		   -fno-delete-null-pointer-checks
-# Required for Linaro GCC 4.8 and higher		   
-#		   -Wno-error=maybe-uninitialized \
-#		   -Wno-error=array-bounds \
-#		   -fno-schedule-insns2
+		   -fno-delete-null-pointer-checks \
+		   -Wno-error=maybe-uninitialized \
+		   -Wno-error=array-bounds \
+		   -fno-schedule-insns2
 
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
