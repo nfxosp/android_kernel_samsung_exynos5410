@@ -1206,6 +1206,8 @@ static int cpufreq_governor_interactive(struct cpufreq_policy *policy,
 			pcpu->hispeed_validate_time =
 				pcpu->floor_validate_time;
 			down_write(&pcpu->enable_sem);
+			del_timer_sync(&pcpu->cpu_timer);
+			del_timer_sync(&pcpu->cpu_slack_timer);
 			expires = jiffies + usecs_to_jiffies(timer_rate);
 			pcpu->cpu_timer.expires = expires;
 			add_timer_on(&pcpu->cpu_timer, j);
