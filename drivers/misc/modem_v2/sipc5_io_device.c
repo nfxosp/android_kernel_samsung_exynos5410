@@ -846,7 +846,8 @@ static long misc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		if (ret < 0)
 			return -EFAULT;
 
-		return mif_dump_log(iod->mc->msd, iod);
+		mif_dump_log(iod->mc->msd, iod);
+		return 0;
 
 	case IOCTL_MIF_DPRAM_DUMP:
 #ifdef CONFIG_LINK_DEVICE_DPRAM
