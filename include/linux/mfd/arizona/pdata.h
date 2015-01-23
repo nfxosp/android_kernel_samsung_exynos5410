@@ -214,6 +214,9 @@ struct arizona_pdata {
 
 	/** wm5102t output power */
 	unsigned int wm5102t_output_pwr;
+
+	/** Callback which is called when the trigger phrase is detected */
+	void (*ez2ctrl_trigger)(void);
 };
 
 #endif
