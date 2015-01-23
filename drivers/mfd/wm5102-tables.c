@@ -73,104 +73,39 @@ static const struct reg_default wm5102_revb_patch[] = {
 	{ 0x171, 0x0000 },
 	{ 0x35E, 0x000C },
 	{ 0x2D4, 0x0000 },
-	{ 0x4DC, 0x0900 },
 	{ 0x80, 0x0000 },
-};
-
-static const struct reg_default wm5102t_pwr_1[] = {
-	{ 0x46C, 0xC01 },
-	{ 0x46E, 0xC01 },
-	{ 0x470, 0xC01 },
-};
-
-static const struct reg_default wm5102t_pwr_2[] = {
-	{ 0x462, 0xC00 },
-	{ 0x464, 0xC00 },
-	{ 0x466, 0xC00 },
-	{ 0x468, 0xC00 },
-	{ 0x46a, 0xC00 },
-	{ 0x46c, 0xC00 },
-	{ 0x46e, 0xC00 },
-	{ 0x470, 0xC00 },
-	{ 0x476, 0x806 },
-};
-
-static const struct reg_default wm5102t_pwr_3[] = {
-	{ 0x462, 0xC00 },
-	{ 0x464, 0xC00 },
-	{ 0x466, 0xC00 },
-	{ 0x468, 0xC00 },
-	{ 0x46a, 0xC00 },
-	{ 0x46c, 0xC00 },
-	{ 0x46e, 0xC00 },
-	{ 0x470, 0xC00 },
-	{ 0x472, 0xC00 },
-	{ 0x47c, 0x806 },
-	{ 0x47e, 0x80e },
-};
-
-static const struct reg_default wm5102t_pwr_4[] = {
-	{ 0x462, 0xC00 },
-	{ 0x464, 0xC00 },
-	{ 0x466, 0xC00 },
-	{ 0x468, 0xC00 },
-	{ 0x46a, 0xC00 },
-	{ 0x46c, 0xC00 },
-	{ 0x46e, 0xC00 },
-	{ 0x470, 0xC00 },
-	{ 0x472, 0xC00 },
-	{ 0x474, 0xC00 },
-	{ 0x476, 0xC00 },
-	{ 0x478, 0xC00 },
-	{ 0x47a, 0xC00 },
-	{ 0x47c, 0xC00 },
-	{ 0x47e, 0xC00 },
-};
-
-static const struct {
-	const struct reg_default *patch;
-	int size;
-} wm5102t_pwr[] = {
-	{ NULL, 0 },
-	{ wm5102t_pwr_1, ARRAY_SIZE(wm5102t_pwr_1) },
-	{ wm5102t_pwr_2, ARRAY_SIZE(wm5102t_pwr_2) },
-	{ wm5102t_pwr_3, ARRAY_SIZE(wm5102t_pwr_3) },
-	{ wm5102t_pwr_4, ARRAY_SIZE(wm5102t_pwr_4) },
 };
 
 /* We use a function so we can use ARRAY_SIZE() */
 int wm5102_patch(struct arizona *arizona)
 {
 	const struct reg_default *wm5102_patch;
-	int ret;
-	int patch_size;
-	int pwr_index = arizona->pdata.wm5102t_output_pwr;
+	int ret = 0;
+	int i, patch_size;
 
 	switch (arizona->rev) {
 	case 0:
 		wm5102_patch = wm5102_reva_patch;
 		patch_size = ARRAY_SIZE(wm5102_reva_patch);
-		break;
 	default:
 		wm5102_patch = wm5102_revb_patch;
 		patch_size = ARRAY_SIZE(wm5102_revb_patch);
-		break;
 	}
 
-	ret = regmap_multi_reg_write_bypassed(arizona->regmap,
-					       wm5102_patch,
-					       patch_size);
-	if (ret != 0)
-		goto out;
+	regcache_cache_bypass(arizona->regmap, true);
 
-	if (pwr_index < ARRAY_SIZE(wm5102t_pwr))
-		ret = regmap_multi_reg_write_bypassed(arizona->regmap,
-						      wm5102t_pwr[pwr_index].patch,
-						      wm5102t_pwr[pwr_index].size);
-	else
-		dev_err(arizona->dev, "Invalid wm5102t output power\n");
+	for (i = 0; i < patch_size; i++) {
+		ret = regmap_write(arizona->regmap, wm5102_patch[i].reg,
+				   wm5102_patch[i].def);
+		if (ret != 0) {
+			dev_err(arizona->dev, "Failed to write %x = %x: %d\n",
+				wm5102_patch[i].reg, wm5102_patch[i].def, ret);
+			goto out;
+		}
+	}
 
 out:
+	regcache_cache_bypass(arizona->regmap, false);
 	return ret;
 }
 
@@ -213,11 +148,11 @@ static const struct regmap_irq wm5102_irqs[ARIZONA_NUM_IRQ] = {
 		.reg_offset = 1, .mask = ARIZONA_DSP_IRQ1_EINT1
 	},
 
-	[ARIZONA_IRQ_SPK_OVERHEAT_WARN] = {
-		.reg_offset = 2, .mask = ARIZONA_SPK_OVERHEAT_WARN_EINT1
+	[ARIZONA_IRQ_SPK_SHUTDOWN_WARN] = {
+		.reg_offset = 2, .mask = ARIZONA_SPK_SHUTDOWN_WARN_EINT1
 	},
-	[ARIZONA_IRQ_SPK_OVERHEAT] = {
-		.reg_offset = 2, .mask = ARIZONA_SPK_OVERHEAT_EINT1
+	[ARIZONA_IRQ_SPK_SHUTDOWN] = {
+		.reg_offset = 2, .mask = ARIZONA_SPK_SHUTDOWN_EINT1
 	},
 	[ARIZONA_IRQ_HPDET] = {
 		.reg_offset = 2, .mask = ARIZONA_HPDET_EINT1
@@ -320,6 +255,9 @@ struct regmap_irq_chip wm5102_irq = {
 static const struct reg_default wm5102_reg_default[] = {
 	{ 0x00000008, 0x0019 },   /* R8     - Ctrl IF SPI CFG 1 */ 
 	{ 0x00000009, 0x0001 },   /* R9     - Ctrl IF I2C1 CFG 1 */ 
+	{ 0x00000016, 0x0000 },   /* R22    - Write Sequencer Ctrl 0 */ 
+	{ 0x00000017, 0x0000 },   /* R23    - Write Sequencer Ctrl 1 */ 
+	{ 0x00000018, 0x0000 },   /* R24    - Write Sequencer Ctrl 2 */ 
 	{ 0x00000020, 0x0000 },   /* R32    - Tone Generator 1 */ 
 	{ 0x00000021, 0x1000 },   /* R33    - Tone Generator 2 */ 
 	{ 0x00000022, 0x0000 },   /* R34    - Tone Generator 3 */ 
@@ -410,6 +348,8 @@ static const struct reg_default wm5102_reg_default[] = {
 	{ 0x00000218, 0x01A6 },   /* R536   - Mic Bias Ctrl 1 */ 
 	{ 0x00000219, 0x01A6 },   /* R537   - Mic Bias Ctrl 2 */ 
 	{ 0x0000021A, 0x01A6 },   /* R538   - Mic Bias Ctrl 3 */ 
+	{ 0x00000225, 0x0400 },   /* R549   - HP Ctrl 1L */
+	{ 0x00000226, 0x0400 },   /* R550   - HP Ctrl 1R */
 	{ 0x00000293, 0x0000 },   /* R659   - Accessory Detect Mode 1 */ 
 	{ 0x0000029B, 0x0020 },   /* R667   - Headphone Detect 1 */ 
 	{ 0x0000029C, 0x0000 },   /* R668   - Headphone Detect 2 */
@@ -449,7 +389,7 @@ static const struct reg_default wm5102_reg_default[] = {
 	{ 0x00000400, 0x0000 },   /* R1024  - Output Enables 1 */ 
 	{ 0x00000408, 0x0000 },   /* R1032  - Output Rate 1 */ 
 	{ 0x00000409, 0x0022 },   /* R1033  - Output Volume Ramp */ 
-	{ 0x00000410, 0x6080 },   /* R1040  - Output Path Config 1L */
+	{ 0x00000410, 0x4080 },   /* R1040  - Output Path Config 1L */
 	{ 0x00000411, 0x0180 },   /* R1041  - DAC Digital Volume 1L */ 
 	{ 0x00000412, 0x0081 },   /* R1042  - DAC Volume Limit 1L */
 	{ 0x00000413, 0x0001 },   /* R1043  - Noise Gate Select 1L */ 
@@ -457,7 +397,7 @@ static const struct reg_default wm5102_reg_default[] = {
 	{ 0x00000415, 0x0180 },   /* R1045  - DAC Digital Volume 1R */ 
 	{ 0x00000416, 0x0081 },   /* R1046  - DAC Volume Limit 1R */
 	{ 0x00000417, 0x0002 },   /* R1047  - Noise Gate Select 1R */ 
-	{ 0x00000418, 0xA080 },   /* R1048  - Output Path Config 2L */
+	{ 0x00000418, 0x4080 },   /* R1048  - Output Path Config 2L */
 	{ 0x00000419, 0x0180 },   /* R1049  - DAC Digital Volume 2L */ 
 	{ 0x0000041A, 0x0081 },   /* R1050  - DAC Volume Limit 2L */
 	{ 0x0000041B, 0x0004 },   /* R1051  - Noise Gate Select 2L */ 
@@ -465,11 +405,11 @@ static const struct reg_default wm5102_reg_default[] = {
 	{ 0x0000041D, 0x0180 },   /* R1053  - DAC Digital Volume 2R */ 
 	{ 0x0000041E, 0x0081 },   /* R1054  - DAC Volume Limit 2R */
 	{ 0x0000041F, 0x0008 },   /* R1055  - Noise Gate Select 2R */ 
-	{ 0x00000420, 0xA080 },   /* R1056  - Output Path Config 3L */
+	{ 0x00000420, 0x4080 },   /* R1056  - Output Path Config 3L */
 	{ 0x00000421, 0x0180 },   /* R1057  - DAC Digital Volume 3L */ 
 	{ 0x00000422, 0x0081 },   /* R1058  - DAC Volume Limit 3L */
 	{ 0x00000423, 0x0010 },   /* R1059  - Noise Gate Select 3L */ 
-	{ 0x00000428, 0xE000 },   /* R1064  - Output Path Config 4L */
+	{ 0x00000428, 0xC000 },   /* R1064  - Output Path Config 4L */
 	{ 0x00000429, 0x0180 },   /* R1065  - DAC Digital Volume 4L */ 
 	{ 0x0000042A, 0x0081 },   /* R1066  - Out Volume 4L */
 	{ 0x0000042B, 0x0040 },   /* R1067  - Noise Gate Select 4L */ 
@@ -487,10 +427,9 @@ static const struct reg_default wm5102_reg_default[] = {
 	{ 0x00000442, 0x3F0A },   /* R1090  - DRE Control 2 */
 	{ 0x00000443, 0xDC1F },   /* R1090  - DRE Control 3 */
 	{ 0x00000450, 0x0000 },   /* R1104  - DAC AEC Control 1 */ 
-	{ 0x00000458, 0x000B },   /* R1112  - Noise Gate Control */ 
+	{ 0x00000458, 0x0001 },   /* R1112  - Noise Gate Control */ 
 	{ 0x00000490, 0x0069 },   /* R1168  - PDM SPK1 CTRL 1 */ 
 	{ 0x00000491, 0x0000 },   /* R1169  - PDM SPK1 CTRL 2 */ 
-	{ 0x000004dd, 0x0000 },   /* R1245  - DAC COMP 2 */ 
 	{ 0x00000500, 0x000C },   /* R1280  - AIF1 BCLK Ctrl */ 
 	{ 0x00000501, 0x0008 },   /* R1281  - AIF1 Tx Pin Ctrl */ 
 	{ 0x00000502, 0x0000 },   /* R1282  - AIF1 Rx Pin Ctrl */ 
@@ -962,6 +901,7 @@ static const struct reg_default wm5102_reg_default[] = {
 	{ 0x00000D1B, 0xFFFF },   /* R3355  - IRQ2 Status 4 Mask */ 
 	{ 0x00000D1C, 0xFFFF },   /* R3356  - IRQ2 Status 5 Mask */ 
 	{ 0x00000D1F, 0x0000 },   /* R3359  - IRQ2 Control */ 
+	{ 0x00000D50, 0x0000 },   /* R3408  - AOD wkup and trig */
 	{ 0x00000D53, 0xFFFF },   /* R3411  - AOD IRQ Mask IRQ1 */ 
 	{ 0x00000D54, 0xFFFF },   /* R3412  - AOD IRQ Mask IRQ2 */ 
 	{ 0x00000D56, 0x0000 },   /* R3414  - Jack detect debounce */ 
@@ -1087,7 +1027,6 @@ static bool wm5102_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_WRITE_SEQUENCER_CTRL_0:
 	case ARIZONA_WRITE_SEQUENCER_CTRL_1:
 	case ARIZONA_WRITE_SEQUENCER_CTRL_2:
-	case ARIZONA_WRITE_SEQUENCER_CTRL_3:
 	case ARIZONA_WRITE_SEQUENCER_PROM:
 	case ARIZONA_TONE_GENERATOR_1:
 	case ARIZONA_TONE_GENERATOR_2:
@@ -1130,8 +1069,6 @@ static bool wm5102_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_ASYNC_CLOCK_1:
 	case ARIZONA_ASYNC_SAMPLE_RATE_1:
 	case ARIZONA_ASYNC_SAMPLE_RATE_1_STATUS:
-	case ARIZONA_ASYNC_SAMPLE_RATE_2:
-	case ARIZONA_ASYNC_SAMPLE_RATE_2_STATUS:
 	case ARIZONA_OUTPUT_SYSTEM_CLOCK:
 	case ARIZONA_OUTPUT_ASYNC_CLOCK:
 	case ARIZONA_RATE_ESTIMATOR_1:
@@ -1183,13 +1120,10 @@ static bool wm5102_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_MIC_BIAS_CTRL_1:
 	case ARIZONA_MIC_BIAS_CTRL_2:
 	case ARIZONA_MIC_BIAS_CTRL_3:
-	case ARIZONA_HP_CTRL_1L:
-	case ARIZONA_HP_CTRL_1R:
 	case ARIZONA_ACCESSORY_DETECT_MODE_1:
 	case ARIZONA_HEADPHONE_DETECT_1:
 	case ARIZONA_HEADPHONE_DETECT_2:
 	case ARIZONA_HP_DACVAL:
-	case ARIZONA_MICD_CLAMP_CONTROL:
 	case ARIZONA_MIC_DETECT_1:
 	case ARIZONA_MIC_DETECT_2:
 	case ARIZONA_MIC_DETECT_3:
@@ -1916,29 +1850,13 @@ static bool wm5102_readable_register(struct device *dev, unsigned int reg)
 	case ARIZONA_DSP1_STATUS_1:
 	case ARIZONA_DSP1_STATUS_2:
 	case ARIZONA_DSP1_STATUS_3:
-	case ARIZONA_DSP1_WDMA_BUFFER_1:
-	case ARIZONA_DSP1_WDMA_BUFFER_2:
-	case ARIZONA_DSP1_WDMA_BUFFER_3:
-	case ARIZONA_DSP1_WDMA_BUFFER_4:
-	case ARIZONA_DSP1_WDMA_BUFFER_5:
-	case ARIZONA_DSP1_WDMA_BUFFER_6:
-	case ARIZONA_DSP1_WDMA_BUFFER_7:
-	case ARIZONA_DSP1_WDMA_BUFFER_8:
-	case ARIZONA_DSP1_RDMA_BUFFER_1:
-	case ARIZONA_DSP1_RDMA_BUFFER_2:
-	case ARIZONA_DSP1_RDMA_BUFFER_3:
-	case ARIZONA_DSP1_RDMA_BUFFER_4:
-	case ARIZONA_DSP1_RDMA_BUFFER_5:
-	case ARIZONA_DSP1_RDMA_BUFFER_6:
-	case ARIZONA_DSP1_WDMA_CONFIG_1:
-	case ARIZONA_DSP1_WDMA_CONFIG_2:
-	case ARIZONA_DSP1_RDMA_CONFIG_1:
 	case ARIZONA_DSP1_SCRATCH_0:
 	case ARIZONA_DSP1_SCRATCH_1:
 	case ARIZONA_DSP1_SCRATCH_2:
 	case ARIZONA_DSP1_SCRATCH_3:
 		return true;
 	default:
+		return false;
 		if ((reg >= 0x100000 && reg < 0x106000) ||
 		    (reg >= 0x180000 && reg < 0x180800) ||
 		    (reg >= 0x190000 && reg < 0x194800) ||
@@ -1954,23 +1872,14 @@ static bool wm5102_volatile_register(struct device *dev, unsigned int reg)
 	switch (reg) {
 	case ARIZONA_SOFTWARE_RESET:
 	case ARIZONA_DEVICE_REVISION:
-	case ARIZONA_WRITE_SEQUENCER_CTRL_0:
-	case ARIZONA_WRITE_SEQUENCER_CTRL_1:
-	case ARIZONA_WRITE_SEQUENCER_CTRL_2:
-	case ARIZONA_WRITE_SEQUENCER_CTRL_3:
 	case ARIZONA_OUTPUT_STATUS_1:
 	case ARIZONA_SAMPLE_RATE_1_STATUS:
 	case ARIZONA_SAMPLE_RATE_2_STATUS:
 	case ARIZONA_SAMPLE_RATE_3_STATUS:
 	case ARIZONA_HAPTICS_STATUS:
 	case ARIZONA_ASYNC_SAMPLE_RATE_1_STATUS:
-	case ARIZONA_ASYNC_SAMPLE_RATE_2_STATUS:
 	case ARIZONA_FLL1_NCO_TEST_0:
 	case ARIZONA_FLL2_NCO_TEST_0:
-	case ARIZONA_DAC_COMP_1:
-	case ARIZONA_DAC_COMP_2:
-	case ARIZONA_DAC_COMP_3:
-	case ARIZONA_DAC_COMP_4:
 	case ARIZONA_FX_CTRL2:
 	case ARIZONA_INTERRUPT_STATUS_1:
 	case ARIZONA_INTERRUPT_STATUS_2:
@@ -1994,36 +1903,18 @@ static bool wm5102_volatile_register(struct device *dev, unsigned int reg)
 	case ARIZONA_AOD_IRQ1:
 	case ARIZONA_AOD_IRQ2:
 	case ARIZONA_AOD_IRQ_RAW_STATUS:
-	case ARIZONA_DSP1_CLOCKING_1:
 	case ARIZONA_DSP1_STATUS_1:
 	case ARIZONA_DSP1_STATUS_2:
 	case ARIZONA_DSP1_STATUS_3:
-	case ARIZONA_DSP1_WDMA_BUFFER_1:
-	case ARIZONA_DSP1_WDMA_BUFFER_2:
-	case ARIZONA_DSP1_WDMA_BUFFER_3:
-	case ARIZONA_DSP1_WDMA_BUFFER_4:
-	case ARIZONA_DSP1_WDMA_BUFFER_5:
-	case ARIZONA_DSP1_WDMA_BUFFER_6:
-	case ARIZONA_DSP1_WDMA_BUFFER_7:
-	case ARIZONA_DSP1_WDMA_BUFFER_8:
-	case ARIZONA_DSP1_RDMA_BUFFER_1:
-	case ARIZONA_DSP1_RDMA_BUFFER_2:
-	case ARIZONA_DSP1_RDMA_BUFFER_3:
-	case ARIZONA_DSP1_RDMA_BUFFER_4:
-	case ARIZONA_DSP1_RDMA_BUFFER_5:
-	case ARIZONA_DSP1_RDMA_BUFFER_6:
-	case ARIZONA_DSP1_WDMA_CONFIG_1:
-	case ARIZONA_DSP1_WDMA_CONFIG_2:
-	case ARIZONA_DSP1_RDMA_CONFIG_1:
 	case ARIZONA_DSP1_SCRATCH_0:
 	case ARIZONA_DSP1_SCRATCH_1:
 	case ARIZONA_DSP1_SCRATCH_2:
 	case ARIZONA_DSP1_SCRATCH_3:
-	case ARIZONA_HP_CTRL_1L:
-	case ARIZONA_HP_CTRL_1R:
 	case ARIZONA_HEADPHONE_DETECT_2:
 	case ARIZONA_HP_DACVAL:
 	case ARIZONA_MIC_DETECT_3:
+	case 0x225:
+	case 0x226:
 		return true;
 	default:
 		if ((reg >= 0x100000 && reg < 0x106000) ||

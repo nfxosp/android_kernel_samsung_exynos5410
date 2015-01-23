@@ -1,7 +1,6 @@
 /*
  * Arizona interrupt support
  *
- * Copyright 2014 CirrusLogic, Inc.
  * Copyright 2012 Wolfson Microelectronics plc
  *
  * Author: Mark Brown <broonie@opensource.wolfsonmicro.com>
@@ -35,10 +34,7 @@ static int arizona_map_irq(struct arizona *arizona, int irq)
 	case ARIZONA_IRQ_JD_RISE:
 	case ARIZONA_IRQ_MICD_CLAMP_FALL:
 	case ARIZONA_IRQ_MICD_CLAMP_RISE:
-		if (arizona->aod_irq_chip)
-			return arizona->pdata.irq_base + 2 + irq;
-		else
-			return -EINVAL;
+		return arizona->pdata.irq_base + 2 + irq;
 	default:
 		return arizona->pdata.irq_base + 2 + ARIZONA_NUM_IRQ + irq;
 	}
@@ -69,9 +65,6 @@ EXPORT_SYMBOL_GPL(arizona_free_irq);
 int arizona_set_irq_wake(struct arizona *arizona, int irq, int on)
 {
 	int val = 0;
-
-	if (!arizona->aod_irq_chip)
-		return -EINVAL;
 
 	if (on) {
 		val = 0xffff;
@@ -155,8 +148,8 @@ static irqreturn_t arizona_irq_thread(int irq, void *data)
 	do {
 		poll = false;
 
-		if (arizona->aod_irq_chip)
-			handle_nested_irq(arizona->virq[0]);
+		/* Always handle the AoD domain */
+		handle_nested_irq(arizona->virq[0]);
 
 		/*
 		 * Check if one of the main interrupts is asserted and only
@@ -199,9 +192,6 @@ static struct irq_chip arizona_irq_chip = {
 	.name			= "arizona",
 	.irq_disable		= arizona_irq_dummy,
 	.irq_enable		= arizona_irq_dummy,
-	.irq_ack		= arizona_irq_dummy,
-	.irq_mask		= arizona_irq_dummy,
-	.irq_unmask		= arizona_irq_dummy,
 };
 
 int arizona_irq_init(struct arizona *arizona)
@@ -222,45 +212,10 @@ int arizona_irq_init(struct arizona *arizona)
 		ctrlif_error = false;
 		break;
 #endif
-#ifdef CONFIG_MFD_FLORIDA
-	case WM8280:
+#ifdef CONFIG_MFD_WM5110
 	case WM5110:
-		aod = &florida_aod;
-
-		switch (arizona->rev) {
-		case 0 ... 2:
-			irq = &florida_irq;
-			break;
-		default:
-			irq = &florida_revd_irq;
-			break;
-		}
-
-		ctrlif_error = false;
-		break;
-#endif
-#ifdef CONFIG_MFD_CS47L24
-	case WM1831:
-	case CS47L24:
-		aod = NULL;
-		irq = &cs47l24_irq;
-
-		ctrlif_error = false;
-		break;
-#endif
-#ifdef CONFIG_MFD_WM8997
-	case WM8997:
-		aod = &wm8997_aod;
-		irq = &wm8997_irq;
-
-		ctrlif_error = false;
-		break;
-#endif
-#ifdef CONFIG_MFD_WM8998
-	case WM8998:
-	case WM1814:
-		aod = &wm8998_aod;
-		irq = &wm8998_irq;
+		aod = &wm5110_aod;
+		irq = &wm5110_irq;
 
 		ctrlif_error = false;
 		break;
@@ -312,9 +267,6 @@ int arizona_irq_init(struct arizona *arizona)
 	flags |= arizona->pdata.irq_flags;
 
         /* set up virtual IRQs */
-	if (!arizona->pdata.irq_base)
-		arizona->pdata.irq_base = -1;
-
 	irq_base = irq_alloc_descs(arizona->pdata.irq_base, 0,
 				   ARRAY_SIZE(arizona->virq), 0);
 	if (irq_base < 0) {
@@ -323,15 +275,13 @@ int arizona_irq_init(struct arizona *arizona)
 		return irq_base;
 	}
 
-	arizona->pdata.irq_base = irq_base;
-
 	arizona->virq[0] = irq_base;
 	arizona->virq[1] = irq_base + 1;
 	irq_base += 2;
 
 	for (i = 0; i < ARRAY_SIZE(arizona->virq); i++) {
 		irq_set_chip_and_handler(arizona->virq[i], &arizona_irq_chip,
-					 handle_simple_irq);
+					 handle_edge_irq);
 		irq_set_nested_thread(arizona->virq[i], 1);
 
                 /* ARM needs us to explicitly flag the IRQ as valid
@@ -344,16 +294,13 @@ int arizona_irq_init(struct arizona *arizona)
 
 	}
 
-	if (aod) {
-		ret = regmap_add_irq_chip(arizona->regmap,
-					  arizona->virq[0],
-					  IRQF_ONESHOT, irq_base, aod,
-					  &arizona->aod_irq_chip);
-		if (ret != 0) {
-			dev_err(arizona->dev, "Failed to add AOD IRQs: %d\n",
-				ret);
-			goto err_domain;
-		}
+	ret = regmap_add_irq_chip(arizona->regmap,
+				  arizona->virq[0],
+				  IRQF_ONESHOT, irq_base, aod,
+				  &arizona->aod_irq_chip);
+	if (ret != 0) {
+		dev_err(arizona->dev, "Failed to add AOD IRQs: %d\n", ret);
+		goto err_domain;
 	}
 
 	ret = regmap_add_irq_chip(arizona->regmap,
@@ -361,7 +308,7 @@ int arizona_irq_init(struct arizona *arizona)
 				  IRQF_ONESHOT, irq_base + ARIZONA_NUM_IRQ, irq,
 				  &arizona->irq_chip);
 	if (ret != 0) {
-		dev_err(arizona->dev, "Failed to add main IRQs: %d\n", ret);
+		dev_err(arizona->dev, "Failed to add IRQs: %d\n", ret);
 		goto err_aod;
 	}
 
