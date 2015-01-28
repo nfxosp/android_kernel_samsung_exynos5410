@@ -621,6 +621,13 @@ const struct soc_enum arizona_input_rate =
 			      arizona_rate_val);
 EXPORT_SYMBOL_GPL(arizona_input_rate);
 
+const struct soc_enum arizona_fx_rate =
+	SOC_VALUE_ENUM_SINGLE(ARIZONA_FX_CTRL1,
+			      ARIZONA_FX_RATE_SHIFT, 0xf,
+			      ARIZONA_RATE_ENUM_SIZE,
+			      arizona_rate_text, arizona_rate_val);
+EXPORT_SYMBOL_GPL(arizona_fx_rate);
+
 const int arizona_rate_val[ARIZONA_RATE_ENUM_SIZE] = {
 	0, 1, 2, 8,
 };
