@@ -296,4 +296,7 @@ int arizona_set_output_mode(struct snd_soc_codec *codec, int output,
 extern int arizona_set_ez2ctrl_cb(struct snd_soc_codec *codec,
 				  void (*ez2ctrl_trigger)(void));
 
+extern int arizona_enable_force_bypass(struct snd_soc_codec *codec);
+extern int arizona_disable_force_bypass(struct snd_soc_codec *codec);
+
 #endif
