@@ -76,6 +76,8 @@
 
 #define ARIZONA_MAX_AIF 3
 
+#define ARIZONA_MAX_DSP	4
+
 struct regulator_init_data;
 
 struct arizona_micbias {
@@ -214,6 +216,9 @@ struct arizona_pdata {
 
 	/** Callback which is called when the trigger phrase is detected */
 	void (*ez2ctrl_trigger)(void);
+
+	struct wm_adsp_fw_defs *fw_defs[ARIZONA_MAX_DSP];
+	int num_fw_defs[ARIZONA_MAX_DSP];
 };
 
 #endif
