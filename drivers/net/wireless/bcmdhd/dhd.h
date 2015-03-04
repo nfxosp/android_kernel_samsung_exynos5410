@@ -59,10 +59,10 @@ int get_scheduler_policy(struct task_struct *p);
 #include <wlioctl.h>
 #include <wlfc_proto.h>
 
-
-#if defined(WL11U) && !defined(MFP)
-#define MFP /* Applying interaction with MFP by spec HS2.0 REL2 */
-#endif /* WL11U */
+#if defined(NDISVER) && (NDISVER >= 0x0600)
+#include <wdf.h>
+#include <WdfMiniport.h>
+#endif /* (NDISVER >= 0x0600)  */
 
 #if defined(KEEP_ALIVE)
 /* Default KEEP_ALIVE Period is 55 sec to prevent AP from sending Keep Alive probe frame */
