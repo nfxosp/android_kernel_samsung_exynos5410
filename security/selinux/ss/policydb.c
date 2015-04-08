@@ -134,21 +134,6 @@ static struct policydb_compat_info policydb_compat[] = {
 		.ocon_num	= OCON_NUM,
 	},
 	{
-		.version	= POLICYDB_VERSION_NEW_OBJECT_DEFAULTS,
-		.sym_num	= SYM_NUM,
-		.ocon_num	= OCON_NUM,
-	},
-	{
-		.version	= POLICYDB_VERSION_DEFAULT_TYPE,
-		.sym_num	= SYM_NUM,
-		.ocon_num	= OCON_NUM,
-	},
-	{
-		.version	= POLICYDB_VERSION_CONSTRAINT_NAMES,
-		.sym_num	= SYM_NUM,
-		.ocon_num	= OCON_NUM,
-	},
-	{
 		.version	= POLICYDB_VERSION_IOCTL_OPERATIONS,
 		.sym_num	= SYM_NUM,
 		.ocon_num	= OCON_NUM,
