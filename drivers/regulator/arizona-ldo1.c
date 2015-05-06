@@ -30,7 +30,8 @@
 
 
 #define  MIN_UV 	900000
-#define  UV_STEP 	50000
+#define  DVFS_UV_STEP 	50000
+#define  UV_STEP 	25000
 #define  HI_PWR_UV	1800000
 
 struct arizona_ldo1 {
@@ -47,13 +48,28 @@ struct arizona_ldo1 {
 static int arizona_ldo_reg_list_voltage_linear(struct regulator_dev *rdev,
 					       unsigned int selector)
 {
+	struct arizona_ldo1 *ldo1 = rdev_get_drvdata(rdev);
+	int step;
+
 	if (selector >= rdev->desc->n_voltages)
 		return -EINVAL;
 
-	if (selector == rdev->desc->n_voltages - 1)
-		return HI_PWR_UV;
-	else
-		return MIN_UV + (UV_STEP * selector);
+	switch (ldo1->arizona->type) {
+	case WM5102:
+	case WM8997:
+	case WM8998:
+	case WM1814:
+		if (selector == rdev->desc->n_voltages - 1)
+			return HI_PWR_UV;
+
+		step = DVFS_UV_STEP;
+		break;
+	default:
+		step = UV_STEP;
+		break;
+	}
+
+	return MIN_UV + (step * selector);
 }
 
 static int arizona_ldo_reg_get_voltage_sel(struct regulator_dev *rdev)
@@ -62,14 +78,23 @@ static int arizona_ldo_reg_get_voltage_sel(struct regulator_dev *rdev)
 	int ret;
 	struct arizona_ldo1 *ldo1 = rdev_get_drvdata(rdev);
 
-	ret = regmap_read(ldo1->arizona->regmap,
-			  ARIZONA_LDO1_CONTROL_2,
-			  &val);
-	if (ret != 0)
-		return ret;
+	switch (ldo1->arizona->type) {
+	case WM5102:
+	case WM8997:
+	case WM8998:
+	case WM1814:
+		ret = regmap_read(ldo1->arizona->regmap,
+				  ARIZONA_LDO1_CONTROL_2,
+				  &val);
+		if (ret != 0)
+			return ret;
 
-	if (val & ARIZONA_LDO1_HI_PWR)
-		return rdev->desc->n_voltages - 1;
+		if (val & ARIZONA_LDO1_HI_PWR)
+			return rdev->desc->n_voltages - 1;
+		break;
+	default:
+		break;
+	}
 
 	ret = regmap_read(ldo1->arizona->regmap,
 			  ARIZONA_LDO1_CONTROL_1,
@@ -90,18 +115,28 @@ static int arizona_ldo_reg_set_voltage_sel(struct regulator_dev *rdev,
 	unsigned int val;
 	int ret;
 
-	if (sel == rdev->desc->n_voltages - 1)
-		val = ARIZONA_LDO1_HI_PWR;
-	else
-		val = 0;
+	switch (ldo1->arizona->type) {
+	case WM5102:
+	case WM8997:
+	case WM8998:
+	case WM1814:
+		if (sel == rdev->desc->n_voltages - 1)
+			val = ARIZONA_LDO1_HI_PWR;
+		else
+			val = 0;
 
-	ret = regmap_update_bits(ldo1->arizona->regmap, ARIZONA_LDO1_CONTROL_2,
-			         ARIZONA_LDO1_HI_PWR, val);
-	if (ret < 0)
-		return ret;
+		ret = regmap_update_bits(ldo1->arizona->regmap,
+					 ARIZONA_LDO1_CONTROL_2,
+					 ARIZONA_LDO1_HI_PWR, val);
+		if (ret < 0)
+			return ret;
 
-	if (val)
-		return 0;
+		if (val)
+			return 0;
+		break;
+	default:
+		break;
+	}
 
 	sel <<= ARIZONA_LDO1_VSEL_SHIFT;
 
@@ -116,6 +151,9 @@ static int arizona_ldo_enable_time(struct regulator_dev *rdev)
 
 	switch (ldo1->arizona->type) {
 	case WM5102:
+	case WM8997:
+	case WM8998:
+	case WM1814:
 		return 1500;
 	default:
 		return 500;
@@ -178,6 +216,16 @@ static struct regulator_desc arizona_ldo1 = {
 	.owner = THIS_MODULE,
 };
 
+static struct regulator_desc arizona_ldo1_new = {
+	.name = "LDO1",
+	.type = REGULATOR_VOLTAGE,
+	.ops = &arizona_ldo1_ops,
+
+	.n_voltages = 13,
+
+	.owner = THIS_MODULE,
+};
+
 static const struct regulator_init_data arizona_ldo1_dvfs = {
 	.constraints = {
 		.min_uV = 1200000,
@@ -189,6 +237,21 @@ static const struct regulator_init_data arizona_ldo1_dvfs = {
 };
 
 static const struct regulator_init_data arizona_ldo1_default = {
+	.constraints = {
+		.min_uV = 1200000,
+		.max_uV = 1200000,
+		.valid_ops_mask = REGULATOR_CHANGE_STATUS,
+	},
+	.num_consumer_supplies = 1,
+};
+
+static const struct regulator_init_data arizona_ldo1_florida = {
+	.constraints = {
+		.min_uV = 1175000,
+		.max_uV = 1200000,
+		.valid_ops_mask = REGULATOR_CHANGE_STATUS |
+				  REGULATOR_CHANGE_VOLTAGE,
+	},
 	.num_consumer_supplies = 1,
 };
 
@@ -246,6 +309,7 @@ static __devinit int arizona_ldo1_probe(struct platform_device *pdev)
 	struct arizona *arizona = dev_get_drvdata(pdev->dev.parent);
 	struct arizona_ldo1 *ldo1;
 	struct regulator_init_data *init_data;
+	struct regulator_desc *desc;
 	struct device_node *of_node = NULL;
 	int ret;
 
@@ -285,9 +349,19 @@ static __devinit int arizona_ldo1_probe(struct platform_device *pdev)
 	 */
 	switch (arizona->type) {
 	case WM5102:
+	case WM8997:
+	case WM8998:
+	case WM1814:
+		desc = &arizona_ldo1;
 		ldo1->init_data = arizona_ldo1_dvfs;
 		break;
+	case WM8280:
+	case WM5110:
+		desc = &arizona_ldo1_new;
+		ldo1->init_data = arizona_ldo1_florida;
+		break;
 	default:
+		desc = &arizona_ldo1_new;
 		ldo1->init_data = arizona_ldo1_default;
 		break;
 	}
@@ -308,22 +382,25 @@ static __devinit int arizona_ldo1_probe(struct platform_device *pdev)
 	if (init_data->num_consumer_supplies == 0)
 		arizona->external_dcvdd = true;
 
-	ldo1->regulator = regulator_register(&arizona_ldo1,
+	ldo1->regulator = regulator_register(desc,
 					     arizona->dev, init_data,
 					     ldo1, of_node);
+	of_node_put(of_node);
 
 	if (IS_ERR(ldo1->regulator)) {
 		ret = PTR_ERR(ldo1->regulator);
 		dev_err(arizona->dev, "Failed to register LDO1 supply: %d\n",
 			ret);
-		return ret;
+		goto err_gpio;
 	}
-
-	of_node_put(of_node);
 
 	platform_set_drvdata(pdev, ldo1);
 
 	return 0;
+
+err_gpio:
+	gpio_free(ldo1->ena);
+	return ret;
 }
 
 static __devexit int arizona_ldo1_remove(struct platform_device *pdev)
@@ -331,6 +408,9 @@ static __devexit int arizona_ldo1_remove(struct platform_device *pdev)
 	struct arizona_ldo1 *ldo1 = platform_get_drvdata(pdev);
 
 	regulator_unregister(ldo1->regulator);
+
+	if (ldo1->ena)
+		gpio_free(ldo1->ena);
 
 	return 0;
 }

@@ -1473,7 +1473,7 @@ static void snd_soc_instantiate_card(struct snd_soc_card *card)
 	struct snd_soc_dai_link *dai_link;
 	int ret, i, order;
 
-	mutex_lock_nested(&card->mutex, SND_SOC_CARD_CLASS_INIT);
+	mutex_lock(&card->mutex);
 
 	if (card->instantiated) {
 		mutex_unlock(&card->mutex);
@@ -2662,7 +2662,7 @@ int snd_soc_put_volsw_sx(struct snd_kcontrol *kcontrol,
 	int max = mc->max;
 	int min = mc->min;
 	int mask = (1 << (fls(min + max) - 1)) - 1;
-	int err = 0;
+	int err;
 	unsigned short val, val_mask, val2 = 0;
 
 	val_mask = mask << shift;

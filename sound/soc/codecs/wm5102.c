@@ -634,17 +634,17 @@ static int wm5102_adsp_power_ev(struct snd_soc_dapm_widget *w,
 	unsigned int v;
 	int ret;
 
+	ret = regmap_read(arizona->regmap, ARIZONA_SYSTEM_CLOCK_1, &v);
+	if (ret != 0) {
+		dev_err(codec->dev,
+			"Failed to read SYSCLK state: %d\n", ret);
+		return -EIO;
+	}
+
+	v = (v & ARIZONA_SYSCLK_FREQ_MASK) >> ARIZONA_SYSCLK_FREQ_SHIFT;
+
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		ret = regmap_read(arizona->regmap, ARIZONA_SYSTEM_CLOCK_1, &v);
-		if (ret != 0) {
-			dev_err(codec->dev,
-				"Failed to read SYSCLK state: %d\n", ret);
-			return -EIO;
-		}
-
-		v = (v & ARIZONA_SYSCLK_FREQ_MASK) >> ARIZONA_SYSCLK_FREQ_SHIFT;
-
 		if (v >= 3) {
 			ret = arizona_dvfs_up(arizona, ARIZONA_DVFS_ADSP1_RQ);
 			if (ret != 0) {
@@ -666,7 +666,7 @@ static int wm5102_adsp_power_ev(struct snd_soc_dapm_widget *w,
 		break;
 	}
 
-	return wm_adsp2_early_event(w, kcontrol, event);
+	return arizona_adsp_power_ev(w, kcontrol, event);
 }
 
 static int wm5102_out_comp_coeff_get(struct snd_kcontrol *kcontrol,
@@ -959,6 +959,9 @@ SND_SOC_BYTES_EXT("Output Compensation Coefficient", 2,
 
 SOC_SINGLE_EXT("Output Compensation Switch", 0, 0, 1, 0,
 	       wm5102_out_comp_switch_get, wm5102_out_comp_switch_put),
+
+SOC_VALUE_ENUM("Output Rate 1", arizona_output_rate),
+SOC_VALUE_ENUM("In Rate", arizona_input_rate),
 
 WM5102_NG_SRC("HPOUT1L", ARIZONA_NOISE_GATE_SELECT_1L),
 WM5102_NG_SRC("HPOUT1R", ARIZONA_NOISE_GATE_SELECT_1R),
@@ -1430,9 +1433,8 @@ ARIZONA_MUX_WIDGETS(ISRC2DEC2, "ISRC2DEC2"),
 ARIZONA_MUX_WIDGETS(ISRC2INT1, "ISRC2INT1"),
 ARIZONA_MUX_WIDGETS(ISRC2INT2, "ISRC2INT2"),
 
-WM_ADSP2_E("DSP1", 0, wm5102_adsp_power_ev),
+WM_ADSP2("DSP1", 0, wm5102_adsp_power_ev),
 
-SND_SOC_DAPM_OUTPUT("CLAMP"),
 SND_SOC_DAPM_OUTPUT("DSP Virtual Output"),
 
 SND_SOC_DAPM_OUTPUT("HPOUT1L"),
@@ -1897,7 +1899,7 @@ static irqreturn_t adsp2_irq(int irq, void *data)
 	struct wm5102_priv *wm5102 = data;
 
 	if (wm5102->core.arizona->pdata.ez2ctrl_trigger &&
-	    wm5102->core.adsp[0].fw_id == 0x5f003)
+	    wm5102->core.adsp[0].fw_features.ez2control_trigger)
 		wm5102->core.arizona->pdata.ez2ctrl_trigger();
 
 	return IRQ_HANDLED;
@@ -1923,7 +1925,6 @@ static int wm5102_codec_probe(struct snd_soc_codec *codec)
 		return ret;
 
 	snd_soc_dapm_disable_pin(&codec->dapm, "HAPTICS");
-	snd_soc_dapm_disable_pin(&codec->dapm, "CLAMP");
 
 	priv->core.arizona->dapm = &codec->dapm;
 

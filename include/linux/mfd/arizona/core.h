@@ -1,6 +1,7 @@
 /*
  * Arizona MFD internals
  *
+ * Copyright 2014 CirrusLogic, Inc.
  * Copyright 2012 Wolfson Microelectronics plc
  *
  * Author: Mark Brown <broonie@opensource.wolfsonmicro.com>
@@ -27,6 +28,12 @@ enum arizona_type {
 	WM5110 = 2,
 	WM8997 = 3,
 	WM8280 = 4,
+	WM8998 = 5,
+	WM1814 = 6,
+	WM8285 = 7,
+	WM1840 = 8,
+	WM1831 = 9,
+	CS47L24 = 10,
 };
 
 #define ARIZONA_IRQ_GP1                    0
@@ -87,13 +94,36 @@ enum arizona_type {
 #define ARIZONA_IRQ_HP2L_DONE             55
 #define ARIZONA_IRQ_HP1R_DONE             56
 #define ARIZONA_IRQ_HP1L_DONE             57
+#define ARIZONA_IRQ_ISRC3_CFG_ERR         58
+#define ARIZONA_IRQ_DSP_SHARED_WR_COLL    59
+#define ARIZONA_IRQ_SPK_SHUTDOWN          60
+#define ARIZONA_IRQ_SPK1R_SHORT           61
+#define ARIZONA_IRQ_SPK1L_SHORT           62
+#define ARIZONA_IRQ_HP3R_SC_NEG           63
+#define ARIZONA_IRQ_HP3R_SC_POS           64
+#define ARIZONA_IRQ_HP3L_SC_NEG           65
+#define ARIZONA_IRQ_HP3L_SC_POS           66
+#define ARIZONA_IRQ_HP2R_SC_NEG           67
+#define ARIZONA_IRQ_HP2R_SC_POS           68
+#define ARIZONA_IRQ_HP2L_SC_NEG           69
+#define ARIZONA_IRQ_HP2L_SC_POS           70
+#define ARIZONA_IRQ_HP1R_SC_NEG           71
+#define ARIZONA_IRQ_HP1R_SC_POS           72
+#define ARIZONA_IRQ_HP1L_SC_NEG           73
+#define ARIZONA_IRQ_HP1L_SC_POS           74
+#define ARIZONA_IRQ_FLL3_LOCK             75
+#define ARIZONA_IRQ_FLL3_CLOCK_OK         76
 
-#define ARIZONA_NUM_IRQ                   58
+#define ARIZONA_NUM_IRQ                   77
 
+#define ARIZONA_HP_SHORT_IMPEDANCE        4
 struct snd_soc_dapm_context;
+struct arizona_extcon_info;
 
 struct arizona {
 	struct regmap *regmap;
+	struct regmap *regmap_32bit;
+
 	struct device *dev;
 
 	enum arizona_type type;
@@ -102,6 +132,7 @@ struct arizona {
 	int num_core_supplies;
 	struct regulator_bulk_data core_supplies[ARIZONA_MAX_CORE_SUPPLIES];
 	struct regulator *dcvdd;
+	struct notifier_block dcvdd_notifier;
 
 	struct arizona_pdata pdata;
 
@@ -113,14 +144,17 @@ struct arizona {
 	struct regmap_irq_chip_data *aod_irq_chip;
 	struct regmap_irq_chip_data *irq_chip;
 
-	bool hpdet_magic;
+	bool hpdet_clamp;
 	unsigned int hp_ena;
+	unsigned int hp_impedance;
+	struct arizona_extcon_info *extcon_info;
 
 	struct mutex clk_lock;
 	int clk32k_ref;
 
 	struct mutex subsys_max_lock;
 	unsigned int subsys_max_rq;
+	bool subsys_max_cached;
 
 	struct snd_soc_dapm_context *dapm;
 
@@ -155,8 +189,22 @@ int arizona_set_irq_wake(struct arizona *arizona, int irq, int on);
 int wm5102_patch(struct arizona *arizona);
 int florida_patch(struct arizona *arizona);
 int wm8997_patch(struct arizona *arizona);
+int vegas_patch(struct arizona *arizona);
+int clearwater_patch(struct arizona *arizona);
+int largo_patch(struct arizona *arizona);
 
 extern int arizona_of_get_named_gpio(struct arizona *arizona, const char *prop,
 				     bool mandatory);
+extern int arizona_of_read_u32_index(const struct device_node *np,
+				const char *propname,
+				u32 index, u32 *out_value);
+extern int arizona_of_read_u32_array(struct arizona *arizona, const char *prop,
+				     bool mandatory, u32 *data, size_t num);
+extern int arizona_of_read_u32(struct arizona *arizona, const char* prop,
+			       bool mandatory, u32 *data);
+
+extern void arizona_florida_mute_analog(struct arizona* arizona,
+					unsigned int mute);
+extern void arizona_florida_clear_input(struct arizona *arizona);
 
 #endif
