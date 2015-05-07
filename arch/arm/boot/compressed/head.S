@@ -700,6 +700,7 @@ __fa526_cache_on:
 		mov	pc, r12
 
 __arm6_mmu_cache_on:
+		.arch armv6
 		mov	r12, lr
 		bl	__setup_mmu
 		mov	r0, #0
@@ -1027,7 +1028,7 @@ cache_clean_flush:
 		mov	r3, #16
 		b	call_cache_fn
 
-       .arch armv4
+		.arch armv4
 __armv4_mpu_cache_flush:
 		mov	r2, #1
 		mov	r3, #0
@@ -1054,6 +1055,7 @@ __fa526_cache_flush:
 		mov	pc, lr
 
 __armv6_mmu_cache_flush:
+		.arch armv6
 		mov	r1, #0
 		mcr	p15, 0, r1, c7, c14, 0	@ clean+invalidate D
 		mcr	p15, 0, r1, c7, c5, 0	@ invalidate I+BTB
@@ -1061,7 +1063,7 @@ __armv6_mmu_cache_flush:
 		mcr	p15, 0, r1, c7, c10, 4	@ drain WB
 		mov	pc, lr
 
-       .arch armv7-a
+		.arch armv7-a
 __armv7_mmu_cache_flush:
 		mrc	p15, 0, r10, c0, c1, 5	@ read ID_MMFR1
 		tst	r10, #0xf << 16		@ hierarchical cache (ARMv7)
@@ -1130,7 +1132,7 @@ __armv5tej_mmu_cache_flush:
 		mcr	p15, 0, r0, c7, c10, 4	@ drain WB
 		mov	pc, lr
 
-       .arch armv4
+		.arch armv4
 __armv4_mmu_cache_flush:
 		mov	r2, #64*1024		@ default: 32K dcache size (*2)
 		mov	r11, #32		@ default: 32 byte line size
