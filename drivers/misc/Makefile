@@ -54,6 +54,7 @@ obj-$(CONFIG_MFD_MAX77803)	+= max77803-muic.o
 obj-$(CONFIG_WL127X_RFKILL)	+= wl127x-rfkill.o
 obj-$(CONFIG_SENSORS_AK8975)	+= akm8975.o
 obj-$(CONFIG_STMPE811_ADC)	+= stmpe811-adc.o
+obj-$(CONFIG_UID_CPUTIME)       += uid_cputime.o
 obj-$(CONFIG_SAMSUNG_C2C)	+= c2c/
 obj-$(CONFIG_SEC_MODEM_V2)	+= modem_v2/
 obj-$(CONFIG_SEC_MODEM_V1)	+= modem_v1/
@@ -67,3 +68,4 @@ obj-$(CONFIG_MOBICORE_DRIVER)  += tzic.o
 ifeq ($(TIMA_ENABLED),1)
 obj-$(CONFIG_TIMA_LOG)		+= tima_debug_log.o
 endif
+
