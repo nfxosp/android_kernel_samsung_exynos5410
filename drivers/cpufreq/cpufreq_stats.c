@@ -20,8 +20,6 @@
 #include <linux/kobject.h>
 #include <linux/spinlock.h>
 #include <linux/notifier.h>
-#include <linux/of.h>
-#include <linux/sched.h>
 #include <asm/cputime.h>
 
 static spinlock_t cpufreq_stats_lock;
@@ -91,47 +89,6 @@ static ssize_t show_time_in_state(struct cpufreq_policy *policy, char *buf)
 			(unsigned long long)
 			cputime64_to_clock_t(stat->time_in_state[i]));
 	}
-	return len;
-}
-
-void acct_update_power(struct task_struct *task, cputime_t cputime) {
-	struct cpufreq_power_stats *powerstats;
-	struct cpufreq_stats *stats;
-	unsigned int cpu_num, curr;
-
-	if (!task)
-		return;
-	cpu_num = task_cpu(task);
-	powerstats = per_cpu(cpufreq_power_stats, cpu_num);
-	stats = per_cpu(cpufreq_stats_table, cpu_num);
-	if (!powerstats || !stats)
-		return;
-
-	curr = powerstats->curr[stats->last_index];
-	task->cpu_power += curr * cputime_to_usecs(cputime);
-}
-EXPORT_SYMBOL_GPL(acct_update_power);
-
-static ssize_t show_current_in_state(struct kobject *kobj,
-		struct kobj_attribute *attr, char *buf)
-{
-	ssize_t len = 0;
-	unsigned int i, cpu;
-	struct cpufreq_power_stats *powerstats;
-
-	spin_lock(&cpufreq_stats_lock);
-	for_each_possible_cpu(cpu) {
-		powerstats = per_cpu(cpufreq_power_stats, cpu);
-		if (!powerstats)
-			continue;
-		len += scnprintf(buf + len, PAGE_SIZE - len, "CPU%d:", cpu);
-		for (i = 0; i < powerstats->state_num; i++)
-			len += scnprintf(buf + len, PAGE_SIZE - len,
-					"%d=%d ", powerstats->freq_table[i],
-					powerstats->curr[i]);
-		len += scnprintf(buf + len, PAGE_SIZE - len, "\n");
-	}
-	spin_unlock(&cpufreq_stats_lock);
 	return len;
 }
 
